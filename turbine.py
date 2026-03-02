@@ -1,5 +1,6 @@
 class Turbine:
-    def __init__(self, numero):
+    def __init__(self, numero, debit_max):
+        self.debit_max = debit_max
         self.numero = numero
 
     def set_niveau_amont(self, niv_amont):
@@ -7,6 +8,7 @@ class Turbine:
 
     def calculer_puissance(self, debit, elevation_aval):
         h_nette = self.hauteur_nette(debit, elevation_aval)
+        debit = min(debit, self.debit_max)
         match self.numero:
             case 1 : return self.puissance_1(h_nette, debit)
             case 2 : return self.puissance_2(h_nette, debit)
@@ -20,7 +22,6 @@ class Turbine:
 
     def hauteur_nette(self, debit, elevation_aval):
         hauteur_brutte = self.hauteur_brutte(elevation_aval)
-        print(hauteur_brutte)
         return hauteur_brutte - (0.5 * (10 ** -5 ) * (debit ** 2))   
 
     def degre_2(self, params, h_nette, q):
@@ -47,7 +48,6 @@ class Turbine:
 
     def puissance_1(self, h_nette, q):
         params = [-59.6891, 3.9525, -0.0633, -0.0644, 0.0120, -3.6976e-04]
-        print(h_nette, q)
         return self.degre_2(params, h_nette, q)
 
     def puissance_2(self, h_nette, q):

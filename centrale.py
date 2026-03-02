@@ -6,8 +6,8 @@ class Centrale:
         self.palier_discretisation = palier_discretisation
         self.nb_turbines = nb_turbines
         self.turbines : Turbine = []
-        for i in range(nb_turbines):
-            self.turbines.append(Turbine(i))
+        for i in range(nb_turbines + 1):
+            self.turbines.append(Turbine(i, debit_max_par_turbine))
 
     def set_debit_total(self, debit_total):
         self.debit_total = min(debit_total, self.debit_max_par_turbine * len(self.turbines))
@@ -23,54 +23,75 @@ class Centrale:
             debit -= ajout
         return paliers
 
-    def repartir_debit(self, debit, niveau_amont):
-
+    def repartir_debit2(self, debit, niveau_amont):
         self.set_debit_total(debit)
         elevation_aval = self.elevation_aval()
+        debits = self.get_paliers_discretise(self.debit_total)
+        etats = []
+        decisions = []
 
-        PAS = self.palier_discretisation
-        Q_MAX = min(debit, self.debit_max_par_turbine)
+        etats_turbine_en_cours = []
+        decision_turbine_en_cours = []
+        # Turbine 1
+        self.turbines[1].set_niveau_amont(niveau_amont)
+        for debit in debits:
+            etats_turbine_en_cours.append(self.turbines[1].calculer_puissance(debit, elevation_aval))
+            decision_turbine_en_cours.append(debit)
+        etats.append(etats_turbine_en_cours)
+        decisions.append(decision_turbine_en_cours)
 
-        N_Q = Q_MAX // PAS + 1
-        NB_T = len(self.turbines)
+        # Turbine 2-3-4-5
+        for j in range(2, 6):
+            etats_j = []
+            decisions_j = []
 
-        # tableaux DP
-        etats = [[0 for _ in range(N_Q)] for _ in range(NB_T + 1)]
-        decisions = [[0 for _ in range(N_Q)] for _ in range(NB_T + 1)]
+            self.turbines[j].set_niveau_amont(niveau_amont)
 
-        # condition initiale
-        for j in range(N_Q):
-            etats[0][j] = 0
-
-        # programmation dynamique
-        for turbine in self.turbines:
-            i = int(turbine.numero)
-            turbine.set_niveau_amont(niveau_amont)
-
-            for j in range(N_Q):
-                q = j * PAS
-                meilleur = float('-inf')
+            for debit in debits:  # débit total disponible
+                meilleur = -float("inf")
                 meilleur_x = 0
 
-                for x in range(0, min(self.debit_max_par_turbine, q) + PAS, PAS):
-                    j_restant = (q - x) // PAS
+                for x in range(0, debit + 1, self.palier_discretisation):
+                    q_restant = debit - x
+                    idx = q_restant // self.palier_discretisation
 
                     valeur = (
-                        etats[i - 1][j_restant]
-                        + turbine.calculer_puissance(x, elevation_aval)
+                        etats[j - 2][idx]
+                        + self.turbines[j].calculer_puissance(x, elevation_aval)
                     )
 
                     if valeur > meilleur:
                         meilleur = valeur
                         meilleur_x = x
 
-                etats[i][j] = meilleur
-                decisions[i][j] = meilleur_x
+                etats_j.append(meilleur)
+                decisions_j.append(meilleur_x)
 
-        return etats, decisions
+            etats.append(etats_j)
+            decisions.append(decisions_j)
         
-    def construire_solution(self, etats, decisions):
-       pass
+        return etats, decisions
+    
+    def reconstruire_solution(self,decisions, etats):
+
+        nb_turbines = len(decisions)
+        solution = [0] * nb_turbines
+
+        q_restant = self.debit_total
+        idx = q_restant // self.palier_discretisation
+
+        # reconstruction en remontant les turbines
+        for i in range(nb_turbines - 1, -1, -1):
+            x = decisions[i][idx]
+            solution[i] = x
+
+            q_restant -= x
+            idx = q_restant // self.palier_discretisation
+
+        # puissance totale optimale (déjà calculée par la DP)
+        puissance_totale = etats[-1][self.debit_total // self.palier_discretisation]
+
+        return solution, puissance_totale
 
 
     def elevation_aval(self):
