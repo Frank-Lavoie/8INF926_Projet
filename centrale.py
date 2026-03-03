@@ -1,13 +1,17 @@
 from turbine import Turbine
 
 class Centrale:
-    def __init__(self, debit_max_par_turbine, nb_turbines, palier_discretisation):
+    def __init__(self, debit_max_par_turbine, nb_turbines, palier_discretisation, turbines_disponibles=None):
         self.debit_max_par_turbine = debit_max_par_turbine
         self.palier_discretisation = palier_discretisation
         self.nb_turbines = nb_turbines
-        self.turbines : Turbine = []
-        for i in range(nb_turbines + 1):
-            self.turbines.append(Turbine(i, debit_max_par_turbine))
+
+        if turbines_disponibles is not None:
+            numeros = turbines_disponibles
+        else:
+            numeros = list(range(1, nb_turbines + 1))
+
+        self.turbines: list[Turbine] = [Turbine(n, debit_max_par_turbine) for n in numeros]
 
     def set_debit_total(self, debit_total):
         self.debit_total = min(debit_total, self.debit_max_par_turbine * len(self.turbines))
@@ -30,33 +34,31 @@ class Centrale:
         etats = []
         decisions = []
 
-        etats_turbine_en_cours = []
-        decision_turbine_en_cours = []
-        # Turbine 1
-        self.turbines[1].set_niveau_amont(niveau_amont)
-        for debit in debits:
-            etats_turbine_en_cours.append(self.turbines[1].calculer_puissance(debit, elevation_aval))
-            decision_turbine_en_cours.append(debit)
-        etats.append(etats_turbine_en_cours)
-        decisions.append(decision_turbine_en_cours)
+        self.turbines[0].set_niveau_amont(niveau_amont)
+        etats_t0 = []
+        decisions_t0 = []
+        for q in debits:
+            etats_t0.append(self.turbines[0].calculer_puissance(q, elevation_aval))
+            decisions_t0.append(q)
+        etats.append(etats_t0)
+        decisions.append(decisions_t0)
 
-        # Turbine 2-3-4-5
-        for j in range(2, 6):
+        for j in range(1, len(self.turbines)):
             etats_j = []
             decisions_j = []
 
             self.turbines[j].set_niveau_amont(niveau_amont)
 
-            for debit in debits:  # débit total disponible
+            for q in debits:
                 meilleur = -float("inf")
                 meilleur_x = 0
 
-                for x in range(0, debit + 1, self.palier_discretisation):
-                    q_restant = debit - x
+                for x in range(0, q + 1, self.palier_discretisation):
+                    q_restant = q - x
                     idx = q_restant // self.palier_discretisation
 
                     valeur = (
-                        etats[j - 2][idx]
+                        etats[j - 1][idx]
                         + self.turbines[j].calculer_puissance(x, elevation_aval)
                     )
 
@@ -69,10 +71,10 @@ class Centrale:
 
             etats.append(etats_j)
             decisions.append(decisions_j)
-        
+
         return etats, decisions
-    
-    def reconstruire_solution(self,decisions, etats):
+
+    def reconstruire_solution(self, decisions, etats):
 
         nb_turbines = len(decisions)
         solution = [0] * nb_turbines
