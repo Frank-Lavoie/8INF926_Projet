@@ -47,16 +47,18 @@ class Turbine:
         return p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10
 
     def puissance_1(self, h_nette, q):
-        params = [-59.6891, 3.9525, -0.0633, -0.0644, 0.0120, -3.6976e-04]
-        return self.degre_2(params, h_nette, q)
+        params = [-1405.1, 114.06, 1.6455, -3.0733, -0.1026,
+                0.0045, 0.0275, 0.0016, -4.7543e-06, -1.5909e-05]
+        return self.degre_3(params, h_nette, q)
 
     def puissance_2(self, h_nette, q):
-        params = [81.5899, -4.1377, -0.2848, 0.0515, 0.0178, -0.0001]
-        return self.degre_2(params, h_nette, q)
+        params = [-836.457, 71.812, -0.934, -2.0543, 0.0352,
+                0.0072, 0.0196, -2.9436e-04, -5.2048e-05, -1.9385e-05]
+        return self.degre_3(params, h_nette, q)
 
     def puissance_3(self, h_nette, q):
         params = [-836.9078, 66.9682, 0.8639, -1.7739, 
-                -0.0509, 0.003, 0.0155, 0.0008, 0.0, -1.1553e-05]
+                -0.0509, 0.003, 0.0155, 0.0008, 1.9687e-06, -1.1553e-05]
         return self.degre_3(params, h_nette, q)
 
     def puissance_4(self, h_nette, q):
@@ -66,5 +68,5 @@ class Turbine:
 
     def puissance_5(self, h_nette, q):
         params = [-662.6103, 50.3204, 0.6475, -1.2511, -0.0426,
-                0.0042, 0.0101, 0.0008, 0, 0]
+                0.0042, 0.0101, 0.0008, -3.1469e-05, -1.1798e-05]
         return self.degre_3(params, h_nette, q)

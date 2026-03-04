@@ -97,9 +97,10 @@ class Centrale:
 
 
     def elevation_aval(self):
+        p1 = -1.4527e-06 * (self.debit_total ** 2)
         p2 = 0.007 * self.debit_total
         p3 = 99.9812
-        return p2 + p3
+        return p1 + p2 + p3
 
     # def __str__(self):
     #     return f"Centrale {self.nom} avec débits: {self.q1}, {self.q2}, {self.q3}, {self.q4}, {self.q5}"
