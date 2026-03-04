@@ -1,0 +1,332 @@
+% ============================================================
+%  Rapport, Optimisation d'une centrale hydroélectrique
+% ============================================================
+\documentclass[12pt, letterpaper]{report}
+
+% ── Encodage & langue ──────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+% ── Mise en page ───────────────────────────────────────────
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% ── Mathématiques ──────────────────────────────────────────
+\usepackage{amsmath, amssymb, amsthm}
+
+% ── Figures & tableaux ─────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{array}
+
+% ── Code source ────────────────────────────────────────────
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{orange},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+}
+
+% ── Hyperliens & PDF ───────────────────────────────────────
+\usepackage[hidelinks]{hyperref}
+
+% ── Numérotation des pages ─────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\leftmark}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Bibliographie ──────────────────────────────────────────
+\usepackage[backend=biber, style=ieee]{biblatex}
+\addbibresource{references.bib}
+
+% ============================================================
+%  PAGE TITRE
+% ============================================================
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Large \textbf{Université du Québec à Chicoutimi}}\\[0.5cm]
+    {\large 8INF926 - Atelier en optimisation avancée - Hiver 2026 - 01}\\[3cm]
+
+    {\Huge \textbf{Optimisation du chargement d'une}}\\[0.3cm]
+    {\Huge \textbf{centrale hydroélectrique}}\\[0.5cm]
+    {\large Modélisation par régression et programmation dynamique}\\[3cm]
+
+    \begin{tabular}{rl}
+        \textbf{Auteurs :}   & Francis LAVOIE \\
+                             & Armand BEHAREL \\
+        \textbf{Professeure :}   & Sara Séguin \\[1cm]
+        \textbf{Date :}      & \today \\
+    \end{tabular}
+
+    \vfill
+\end{titlepage}
+
+% ── Table des matières ─────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ============================================================
+%  INTRODUCTION
+% ============================================================
+\chapter{Introduction}
+
+La production d'énergie hydroélectrique constitue l'une des sources d'énergie renouvelable les plus importantes au monde, et particulièrement au Québec où elle représente la quasi-totalité de la production électrique. Une centrale hydroélectrique convertit l'énergie potentielle de l'eau en électricité au moyen de turbines hydrauliques, dont la puissance produite dépend du débit d'eau qui les traverse et de la hauteur de chute nette disponible.
+
+Dans ce contexte, l'optimisation du chargement d'une centrale, c'est-à-dire la répartition optimale du débit total disponible entre les différentes turbines, représente un enjeu économique majeur. En effet, les turbines présentent des rendements qui varient de façon non linéaire en fonction du débit et de la hauteur de chute, ce qui rend la recherche de la répartition maximisant la puissance totale non triviale.
+
+Ce travail s'inscrit dans ce cadre et poursuit deux objectifs principaux. Le premier (Partie~1) consiste à modéliser les courbes de puissance de chaque turbine à partir de données expérimentales, en utilisant des techniques de régression polynomiale dans l'environnement MATLAB. Le second (Partie~2) consiste à implémenter un algorithme de programmation dynamique en Python permettant de déterminer la répartition optimale du débit total entre les turbines, en exploitant les modèles développés en Partie~1.
+
+% ============================================================
+%  PARTIE 1, MODÉLISATION
+% ============================================================
+\part{Modélisation des courbes de puissance}
+
+% ── Chapitre 1 : Méthodes de modélisation ──────────────────
+\chapter{Méthodes de modélisation de fonctions}
+
+\section{Régression polynomiale}
+
+La régression polynomiale est une extension de la régression linéaire permettant de modéliser des relations non linéaires entre variables. Pour une variable explicative $x$, un polynôme de degré $n$ s'écrit :
+
+\begin{equation}
+    \hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \cdots + \beta_n x^n
+    \label{eq:poly1d}
+\end{equation}
+
+Dans le cas de deux variables explicatives $x$ et $y$ (surface polynomiale), un polynôme de degré 2 (poly22) s'écrit :
+
+\begin{equation}
+    \hat{f}(x,y) = p_{00} + p_{10}x + p_{01}y + p_{20}x^2 + p_{11}xy + p_{02}y^2
+    \label{eq:poly22}
+\end{equation}
+
+Et un polynôme de degré 3 (poly33) :
+
+\begin{equation}
+    \hat{f}(x,y) = p_{00} + p_{10}x + p_{01}y + p_{20}x^2 + p_{11}xy + p_{02}y^2
+    + p_{30}x^3 + p_{21}x^2y + p_{12}xy^2 + p_{03}y^3
+    \label{eq:poly33}
+\end{equation}
+
+Les coefficients sont estimés par la méthode des moindres carrés ordinaires (MCO), qui minimise la somme des carrés des résidus :
+
+\begin{equation}
+    \min_{\boldsymbol{\beta}} \sum_{i=1}^{N} \left( y_i - \hat{f}(x_i) \right)^2
+    \label{eq:mco}
+\end{equation}
+
+\section{Métriques d'évaluation de la qualité du fit}
+
+Plusieurs indicateurs permettent d'évaluer la qualité d'un modèle de régression.
+
+\subsection{Coefficient de détermination $R^2$}
+
+\begin{equation}
+    R^2 = 1 - \frac{\text{SS}_{\text{res}}}{\text{SS}_{\text{tot}}}
+    = 1 - \frac{\sum_{i}(y_i - \hat{y}_i)^2}{\sum_{i}(y_i - \bar{y})^2}
+    \label{eq:r2}
+\end{equation}
+
+Un $R^2$ proche de 1 indique que le modèle explique une grande part de la variance des données.
+
+\subsection{Erreur quadratique moyenne (RMSE)}
+
+\begin{equation}
+    \text{RMSE} = \sqrt{\frac{\text{SSE}}{\text{DFE}}}
+    \label{eq:rmse}
+\end{equation}
+
+où SSE est la somme des carrés des erreurs et DFE le nombre de degrés de liberté résiduels.
+
+\section{Problèmes de conditionnement}
+
+Lors de la régression polynomiale de degré élevé avec des variables d'ordres de grandeur très différents, la matrice de Gram $\mathbf{X}^\top \mathbf{X}$ peut devenir mal conditionnée, rendant l'inversion numérique instable. Ce problème peut être atténué par la \textit{normalisation} (centrage et mise à l'échelle) des variables avant l'ajustement.
+
+% ── Chapitre 2 : Méthodologie Partie 1 ────────────────────
+\chapter{Méthodologie, Partie 1}
+
+\section{Données}
+
+Les données utilisées proviennent des mesures historiques de la centrale hydroélectrique étudiée. Pour chaque turbine $k$, les variables
+
+
+\section{Librairie MATLAB et outil \textit{Curve Fitting Toolbox}}
+
+L'ajustement des surfaces polynomiales a été réalisé avec la \textit{Curve Fitting Toolbox} de MATLAB, qui permet d'ajuster des modèles \texttt{poly22} et \texttt{poly33} via la fonction \texttt{fit()} et de visualiser les résidus et les nuages de points en 3D.
+
+\section{Choix du degré polynomial}
+
+% TODO : justifier poly22 vs poly33 selon les turbines
+
+\section{Modélisation du niveau aval}
+
+Le niveau aval $z_{\text{aval}}$ est modélisé comme une fonction du débit total $Q_{\text{total}}$ par un polynôme de degré 2 :
+
+\begin{equation}
+    z_{\text{aval}}(Q_{\text{total}}) = p_1 Q_{\text{total}}^2 + p_2 Q_{\text{total}} + p_3
+    \label{eq:zaval}
+\end{equation}
+
+avec $p_1 = -1.4527 \times 10^{-6}$, $p_2 = 0.007$ et $p_3 = 99.9812$ ($R^2 = 0.9763$).
+
+\section{Modélisation de la hauteur nette}
+
+La hauteur nette pour la turbine $k$ est calculée comme :
+
+\begin{equation}
+    H_{k,\text{nette}} = (z_{\text{amont}} - z_{\text{aval}}) - 0.5 \times 10^{-5} \cdot Q_k^2
+    \label{eq:hnette}
+\end{equation}
+
+où le second terme représente les pertes de charge hydrauliques.
+
+% ── Chapitre 3 : Résultats Partie 1 ───────────────────────
+\chapter{Résultats, Partie 1}
+
+\section{Courbes de puissance des turbines}
+
+Le tableau~\ref{tab:coefficients} présente les coefficients des surfaces polynomiales ajustées pour chaque turbine.
+
+\begin{table}[H]
+    \centering
+    \caption{Coefficients des modèles poly33 pour chaque turbine}
+    \label{tab:coefficients}
+    \begin{tabular}{lrrrrr}
+        \toprule
+        Coeff. & T1 & T2 & T3 & T4 & T5 \\
+        \midrule
+        $p_{00}$ & $-1405.1$ & $-836.457$ & $-836.9078$ & $-2.6141\times10^{3}$ & $-662.6103$ \\
+        $p_{10}$ & $114.06$ & $71.812$ & $66.9682$ & $192.2533$ & $50.3204$ \\
+        $p_{01}$ & $1.6455$ & $-0.934$ & $0.8639$ & $7.8875$ & $0.6475$ \\
+        $p_{20}$ & $-3.0733$ & $-2.0543$ & $-1.7739$ & $-4.5859$ & $-1.2511$ \\
+        $p_{11}$ & $-0.1026$ & $0.0352$ & $-0.0509$ & $-0.45$ & $-0.0426$ \\
+        $p_{02}$ & $0.0045$ & $0.0072$ & $0.003$ & $0.0024$ & $0.0042$ \\
+        $p_{30}$ & $0.0275$ & $0.0196$ & $0.0155$ & $0.0351$ & $0.0101$ \\
+        $p_{21}$ & $0.0016$ & $-2.9436\times10^{-4}$ & $0.0008$ & $0.0064$ & $0.0008$ \\
+        $p_{12}$ & $-4.7543\times10^{-6}$ & $-5.2048\times10^{-5}$ & $1.9687\times10^{-6}$ & $8.9819\times10^{-5}$ & $-3.1469\times10^{-5}$ \\
+        $p_{03}$ & $-1.5909\times10^{-5}$ & $-1.9385\times10^{-5}$ & $-1.1553\times10^{-5}$ & $-1.9560\times10^{-5}$ & $-1.1798\times10^{-5}$ \\
+        \midrule
+        $R^2$    & $0.9998$ & $0.9998$ & $0.9999$ & $0.9972$ & $0.9998$ \\
+        RMSE     & $0.2289$ & $0.2339$ & $0.1800$ & $0.2431$ & $0.1968$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+% TODO : ajouter figures des nuages de points + surfaces ajustées
+% Exemple :
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{figures/surface_T1.png}
+%     \caption{Surface de puissance ajustée pour la turbine T1}
+%     \label{fig:surface_t1}
+% \end{figure}
+
+% ============================================================
+%  PARTIE 2, PROGRAMMATION DYNAMIQUE
+% ============================================================
+\part{Optimisation par programmation dynamique}
+
+% ── Chapitre 4 : Théorie DP ───────────────────────────────
+\chapter{Programmation dynamique}
+
+\section{Principe général}
+
+La programmation dynamique (PD) est une méthode d'optimisation introduite par Richard Bellman dans les années 1950~\cite{bellman1957}. Elle repose sur le \textit{principe d'optimalité} : toute sous-politique d'une politique optimale est elle-même optimale. Ce principe permet de décomposer un problème complexe en une séquence de sous-problèmes plus simples, résolus une seule fois et mémorisés.
+
+
+% ── Chapitre 5 : Méthodologie Partie 2 ────────────────────
+\chapter{Méthodologie, Partie 2}
+
+\section{Modélisation mathématique}
+
+\subsection{Variables et paramètres}
+
+\begin{itemize}
+    \item $N$ : nombre de turbines disponibles
+    \item $Q_{\text{total}}$ : débit total à répartir (m³/s)
+    \item $Q_k$ : débit alloué à la turbine $k$ (variable de décision)
+    \item $Q_{\max}$ : débit maximum par turbine (m³/s)
+    \item $\Delta Q$ : palier de discrétisation (m³/s)
+    \item $H_{k,\text{nette}}$ : hauteur nette de la turbine $k$ (m)
+    \item $P_k(H_{k,\text{nette}}, Q_k)$ : puissance de la turbine $k$ (MW)
+\end{itemize}
+
+\subsection{Problème d'optimisation}
+
+\begin{equation}
+    \max_{Q_1, \ldots, Q_N} \sum_{k=1}^{N} P_k\!\left(H_{k,\text{nette}},\ Q_k\right)
+    \label{eq:objectif}
+\end{equation}
+
+sous les contraintes :
+
+\begin{align}
+    \sum_{k=1}^{N} Q_k &= Q_{\text{total}} \label{eq:contrainte_debit} \\
+    0 \leq Q_k &\leq Q_{\max}, \quad \forall k = 1, \ldots, N \label{eq:contrainte_borne}
+\end{align}
+
+\subsection{Formulation récursive}
+
+On définit $V_k(q)$ comme la puissance maximale atteignable par les $k$ premières turbines pour un débit disponible $q$ :
+
+\begin{equation}
+    V_k(q) = \max_{0 \leq x \leq q,\ x \in \mathcal{Q}} \left[ P_k(H_{k,\text{nette}}, x) + V_{k-1}(q - x) \right]
+    \label{eq:recursion}
+\end{equation}
+
+avec la condition initiale $V_1(q) = P_1(H_{1,\text{nette}}, q)$.
+
+La solution optimale est $V_N(Q_{\text{total}})$, reconstruite par remontée des décisions mémorisées.
+
+\section{Implémentation en Python}
+
+L'algorithme a été implémenté en Python, avec une interface web Flask permettant de configurer interactivement les paramètres (turbines disponibles, débit total, niveau amont, palier de discrétisation).
+
+% ── Chapitre 6 : Résultats Partie 2 ───────────────────────
+\chapter{Résultats, Partie 2}
+
+\section{Comparaison avec les données de référence}
+
+% TODO : tableau comparatif 100 premières lignes
+
+\section{Temps de résolution}
+
+% TODO : mesures de temps selon palier et nombre de turbines
+
+\section{Effet de la modélisation sur la précision}
+
+% TODO : comparer résultats poly22 vs poly33
+
+% ── Chapitre 7 : Discussion ───────────────────────────────
+\chapter{Discussion}
+
+% TODO : retour sur résultats, difficultés, hypothèses
+
+
+% ── Chapitre 8 : Conclusion ───────────────────────────────
+\chapter{Conclusion et travaux futurs}
+
+% TODO
+
+% ── Bibliographie ──────────────────────────────────────────
+\printbibliography[heading=bibintoc, title={Bibliographie}]
+
+\end{document}
