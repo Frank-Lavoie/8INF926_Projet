@@ -1,6 +1,8 @@
 import flask
 import json
 from centrale import Centrale
+import pandas as pd
+import requests
 
 app = flask.Flask(__name__)
 
@@ -369,7 +371,6 @@ def optimiser():
             for i in range(len(solution))
         }
         max_debit = max(solution) if solution else 1
-
         return flask.jsonify({
             'solution_indexed': solution_indexed,
             'puissance':        puissance,
@@ -379,6 +380,98 @@ def optimiser():
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
+@app.route('/verifier', methods=['GET'])
+@app.route('/verifier', methods=['GET'])
+def verifier():
+    nrows = 100
+    df = pd.read_excel("data.xlsx", nrows=nrows)
+
+    total_diff_puissance = 0
+    nb_diff_turbines = 0
+
+    rows_html = ""
+
+    for i in range(nrows):
+
+        niv_amont = df['Niv Amont (m)'].iloc[i]
+        qtot = df['Qtot (m3/s)'].iloc[i]
+
+        jsonObject = {
+            'turbines_disponibles': [1,2,3,4,5],
+            'debit_total': qtot,
+            'niveau_amont': niv_amont
+        }
+
+        response_json = requests.post(
+            'http://127.0.0.1:5000/optimiser',
+            json=jsonObject
+        ).json()
+
+        # turbines estimées
+        nb_turbines_estimee = sum(
+            v != 0 for v in response_json['solution_indexed'].values()
+        )
+
+        # turbines réelles
+        nb_turbines_reel = (
+            df[['Q1 (m3/s)','Q2 (m3/s)','Q3 (m3/s)','Q4 (m3/s)','Q5 (m3/s)']]
+            .iloc[i] != 0
+        ).sum()
+
+        puissance_reel = df['Puissance totale'].iloc[i]
+        puissance_estimee = response_json['puissance']
+
+        diff_puissance = abs(puissance_reel - puissance_estimee)
+        diff_turbines = abs(nb_turbines_reel - nb_turbines_estimee)
+
+        total_diff_puissance += diff_puissance
+
+        if diff_turbines != 0:
+            nb_diff_turbines += 1
+
+        puissance_style = "background-color:red;" if diff_puissance > 20 else ""
+        turbine_style = "background-color:red;" if diff_turbines != 0 else ""
+
+        rows_html += f"""
+        <tr>
+            <td>{i}</td>
+            <td>{puissance_reel:.2f}</td>
+            <td>{puissance_estimee:.2f}</td>
+            <td style="{puissance_style}">{diff_puissance:.2f}</td>
+            <td>{nb_turbines_reel}</td>
+            <td>{nb_turbines_estimee}</td>
+            <td style="{turbine_style}">{diff_turbines}</td>
+        </tr>
+        """
+
+    moyenne_diff_puissance = total_diff_puissance / nrows
+
+    html = f"""
+    <h2>Sommaire</h2>
+    <ul>
+        <li>Moyenne des différences de puissance : <b>{moyenne_diff_puissance:.2f}</b></li>
+        <li>Nombre de différences de turbines : <b>{nb_diff_turbines}</b> / {nrows}</li>
+    </ul>
+
+    <h2>Détails</h2>
+
+    <table border="1" cellpadding="5" cellspacing="0">
+        <tr>
+            <th>Ligne</th>
+            <th>Puissance réelle</th>
+            <th>Puissance estimée</th>
+            <th>Différence puissance</th>
+            <th>Turbines réelles</th>
+            <th>Turbines estimées</th>
+            <th>Différence turbines</th>
+        </tr>
+
+        {rows_html}
+
+    </table>
+    """
+
+    return html
 
 if __name__ == '__main__':
     app.run(debug=True)
