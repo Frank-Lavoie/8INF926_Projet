@@ -300,14 +300,25 @@ Le coefficient $p_{10}$ (terme linéaire en $h$) est le plus dominant pour toute
 
 \section{Principe général}
 
-La programmation dynamique (PD) est une méthode d'optimisation introduite par Richard Bellman dans les années 1950~\cite{bellman1957}. Elle repose sur le \textit{principe d'optimalité} : toute sous-politique d'une politique optimale est elle-même optimale. Ce principe permet de décomposer un problème complexe en une séquence de sous-problèmes plus simples, résolus une seule fois et mémorisés.
+La programmation dynamique (PD) est une méthode d'optimisation introduite par Richard Bellman dans les années 1950~\cite{bellman1957}.  Celle-ci vise à optimiser des calculs complexes tout en limitant le temps de calcul nécessaire à l'obtention de la solution optimale.  En effet, les méthodes naives tel que le calcul de toutes les combinaisons possible sont souvent impossible à réaliser en pratique, entre autre puisque le temps de calcul serait trop élevé.  Il a donc été nécessaire de développer des approches permettant de trouver une solution optimale tout en réduisant le nombre de calculs à effectuer.  Pour ce faire, la programmation dynamique est une technique algorithmique qui consiste à découper un problème complexe en plusieurs sous-problèmes.  L'idée principale derrière cela est de calculer la solution optimale de chacun des sous-problèmes.  On garde ensuite en mémoire la solution optimal de ceux-ci afin d'éviter les calculs redondants.  On évite donc de calculer plusieurs fois la même chose, ce qui réduit le temps de calcul et permet de limiter l'effet exponentiel de l'ajout de dimensionnalités.  Évidemment, la programmation dynamique est tout de même sensible à l'augmentation des dimensionnalités, mais beaucoup moins qu'un algorithme qui testerait toutes les combinaisons possible, par exemple.  La dernière étape de la programmation dynamique consiste à reconstruire la solution finale à partir des solutions optimales de chacun des sous-problèmes.
 
+\section{Les prérequis de la programmation dynamique}
+Pour qu'un problème puisse être résolu efficacement et de façon optimale grâce à la programation dynamique, celui-ci doit généralement respecter les deux propriétés suivantes : la sous-structure optimale et les sous-problèmes chevauchants.  La sous-structure optimale repose sur le principe \textit{principe d'optimalité} : toute sous-politique d'une politique optimale est elle-même optimale. Autrement dit, on peut résoudre un problème global grâce à la combinaison des meilleures solutions de ses sous-problèmes.  Un exemple de cette propriété apparait dans les problèmes du plus court chemin dans un graphe.  En effet, si le plus court chemin entre les somment A et C passe par le sommet B, alors les chemin entre A et B et B et C doivent eux aussi être des plus courts chemins.
+
+La deuxième propriété importante mais associée à la programmation dynamique est la présence de sous-problèmes chevauchants.  Cela signifie que les mêmes sous-problèmes apparaissent plusieurs fois lors de la résolution du problème initial.  Dans une approche naive, ces sous-problèmes seraient calculés plusieurs fois.  C'est dans ces cas que la programmation dynamique devient particulièrement efficace, puisque l'on calcule chaque sous-problème une seule fois, on stocke l'information dans une structure de données tel qu'un tableau et on construit la solution optimale à partir de ces sous-problèmes optimaux.  Cela a comme effet d'éliminer les calculs redondants, réduisant par le fait même le temps de calcul nécessaire et la sensibilité à l'augmentation des dimensionnalités.
+
+\section{Approche top-down et bottom-up}
+
+La programmation dynamique peut être mise en œuvre selon deux approches principales : l'approche \textit{top-down} et l'approche \textit{bottom-up}. Bien que ces deux méthodes reposent sur les mêmes principes fondamentaux, elles diffèrent dans la manière dont les sous-problèmes sont explorés et résolus.
+
+L'approche \textit{top-down}, consiste à résoudre le problème initial de manière récursive en le décomposant progressivement en sous-problèmes plus petits. Lorsqu’un sous-problème est résolu pour la première fois, sa solution est mémorisée dans une structure de données afin d’éviter de recalculer ce même sous-problème ultérieurement.  Lorsqu’un sous-problème déjà résolu apparaît de nouveau, l’algorithme récupère directement la solution stockée plutôt que de la recalculer.
+
+De son côté, l'approche \textit{bottom-up}, adopte une stratégie différente. Au lieu de commencer par le problème global, l’algorithme résout d’abord les sous-problèmes les plus simples, puis combine progressivement leurs solutions afin de résoudre des sous-problèmes de plus en plus grands.  Concrètement, les solutions des sous-problèmes sont généralement stockées dans un tableau qui est rempli de manière itérative. Les premières entrées du tableau correspondent aux cas de base du problème, tandis que les entrées suivantes sont calculées à partir des valeurs déjà déterminées.  Dans la pratique, le choix entre ces deux approches dépend généralement de la structure du problème étudié et des contraintes de performance associées à son implémentation.
 
 % ── Chapitre 5 : Méthodologie Partie 2 ────────────────────
 \chapter{Méthodologie, Partie 2}
 
 \section{Modélisation mathématique}
-
 \subsection{Variables et paramètres}
 
 \begin{itemize}
@@ -349,7 +360,17 @@ La solution optimale est $V_N(Q_{\text{total}})$, reconstruite par remontée des
 
 \section{Implémentation en Python}
 
-L'algorithme a été implémenté en Python, avec une interface web Flask permettant de configurer interactivement les paramètres (turbines disponibles, débit total, niveau amont, palier de discrétisation).
+\subsection{Choix du langage et librairies utilisées}
+L'algorithme de programmation dynamique a été implémenté en python.  Ce choix a été motivé par l'accessibilité de ce language en plus de notre connaissance de celui-ci.  En effet, ce language possède une grande communauté, beaucoup de documentation en plus d'offrir plusieurs librairies axées sur le domaine scientifique.  Les principales librairies  utilisées lors de ce projet sont les suivantes : 
+\begin{itemize}
+    \item \textit{flask} : framework principal, permet de faire une api et une interface web en python.
+    \item \textit{pandas} : lecture des données dans le fichier xlsx fourni.
+    \item \textit{requests} : permet de faire des requêtes http en python
+\end{itemize}
+Ces librairies ont permises de faire une interface web permettant de fournir le niveau amont et le débit total.  Le programme nous affiche ensuite la répartition optimale entre les turbines et la puissances totale produite.  Une page de base permet également de comparer les résultats obtenus grâce à l'algorithme à ceux du fichier xlsx fourni.
+
+\subsection{Structure du code}
+Le code python est séparé en trois fichiers principaux.  Tout d'abord, le fichier \textit{interface.py} contient toutes les routes de l'API \textit{flask}.  Ces routes permettent à l'utilisateur de naviguer entre les différentes pages.  Cette partie sera amélioré lors de la troisième partie de ce projet.  Ensuite, le fichier \textit{turbine.py} contient la classe turbine permettant de calculer la puissance de chaque turbine en fonction du débit turbiné.  Ce calcul est effectué grâce aux fonctions estimées qui ont été détaillées dans la première partie de ce rapport.  Finalement, le fichier \textit{centrale.py} contient le code portant sur l'algorithme de programmation dynamique.  En effet, la classe centrale est responsable, entre-autres, d'initialiser les turbines, de résoudre chaque sous-problèmes et de construire la solution optimale grâce à l'approche \textit{bottom-up}.
 
 % ── Chapitre 6 : Résultats Partie 2 ───────────────────────
 \chapter{Résultats, Partie 2}
