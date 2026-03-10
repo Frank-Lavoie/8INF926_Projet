@@ -3,6 +3,7 @@ import json
 from centrale import Centrale
 import pandas as pd
 import requests
+import time
 
 app = flask.Flask(__name__)
 
@@ -390,6 +391,10 @@ def verifier():
     nb_diff_turbines = 0
 
     rows_html = ""
+    temps_total = 0
+
+    cols_turbines = ['Q1 (m3/s)','Q2 (m3/s)','Q3 (m3/s)','Q4 (m3/s)','Q5 (m3/s)']
+    turbines_data = df[cols_turbines].values
 
     for i in range(nrows):
 
@@ -397,15 +402,18 @@ def verifier():
         qtot = df['Qtot (m3/s)'].iloc[i]
 
         jsonObject = {
-            'turbines_disponibles': [1,2,3,4,5],
+            'turbines_disponibles': [1,2,3,4],
             'debit_total': qtot,
-            'niveau_amont': niv_amont
+            'niveau_amont': niv_amont,
+            'palier' : 5
         }
 
+        start = time.perf_counter()
         response_json = requests.post(
             'http://127.0.0.1:5000/optimiser',
             json=jsonObject
         ).json()
+        temps_total += time.perf_counter() - start
 
         # turbines estimées
         nb_turbines_estimee = sum(
@@ -413,10 +421,7 @@ def verifier():
         )
 
         # turbines réelles
-        nb_turbines_reel = (
-            df[['Q1 (m3/s)','Q2 (m3/s)','Q3 (m3/s)','Q4 (m3/s)','Q5 (m3/s)']]
-            .iloc[i] != 0
-        ).sum()
+        nb_turbines_reel = (turbines_data[i] != 0).sum()
 
         puissance_reel = df['Puissance totale'].iloc[i]
         puissance_estimee = response_json['puissance']
@@ -451,6 +456,7 @@ def verifier():
     <ul>
         <li>Moyenne des différences de puissance : <b>{moyenne_diff_puissance:.2f}</b></li>
         <li>Nombre de différences de turbines : <b>{nb_diff_turbines}</b> / {nrows}</li>
+        <li>Temps moyen par optimisation : {temps_total / nrows}</li>
     </ul>
 
     <h2>Détails</h2>
