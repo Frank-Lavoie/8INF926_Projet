@@ -364,9 +364,9 @@ La solution optimale est $V_N(Q_{\text{total}})$, reconstruite par remontée des
 \subsection{Choix du langage et librairies utilisées}
 L'algorithme de programmation dynamique a été implémenté en python.  Ce choix a été motivé par l'accessibilité de ce language en plus de notre connaissance de celui-ci.  En effet, ce language possède une grande communauté, beaucoup de documentation en plus d'offrir plusieurs librairies axées sur le domaine scientifique.  Les principales librairies  utilisées lors de ce projet sont les suivantes : 
 \begin{itemize}
-    \item \textit{flask} : framework principal, permet de faire une api et une interface web en python.
-    \item \textit{pandas} : lecture des données dans le fichier xlsx fourni.
-    \item \textit{requests} : permet de faire des requêtes http en python
+    \item \textit{flask} : framework principal, permet de faire une api et une interface web en python \cite{flask}.
+    \item \textit{pandas} : lecture des données dans le fichier xlsx fourni \cite{pandas}.
+    \item \textit{requests} : permet de faire des requêtes http en python \cite{requests}.
 \end{itemize}
 Ces librairies ont permises de faire une interface web permettant de fournir le niveau amont et le débit total.  Le programme nous affiche ensuite la répartition optimale entre les turbines et la puissances totale produite.  Une page de base permet également de comparer les résultats obtenus grâce à l'algorithme à ceux du fichier xlsx fourni.
 
@@ -435,8 +435,7 @@ La mise en place de cet algorithme n'a pas été de tout repos.  En effet, comme
 
 % ── Chapitre 8 : Conclusion ───────────────────────────────
 \chapter{Conclusion et travaux futurs}
-
-% TODO
+Pour conclure, ce laboratoire nous a permis de mieux comprendre plusieurs aspects de la programmation dynamique et de la résolution de problèmes d'optimisation.  Tout d'abord, nous avons pu voir comment approximer des fonctions à l'aide de \textit{matlab}.  Cet aspect du travail était particulièrement intéressant puisqu'il nous a montré concrètement comme il est possible de passer de données réeles à des fonctions pouvant être utilisées par la suite pour faire de la prédiction ou de l'optimisation.  Par la suite, la deuxième partie du travail nous a permis d'approfondir notre compréhension de la programmation dynamique. Nous avons ainsi pu mieux comprendre le fonctionnement de cette approche d'optimisation ainsi que les différentes étapes nécessaires à son implémentation.  Malgré les embûches rencontrées, nous sommes satisfaits de ce que nous avons réussi à accomplir et nous sommes impatients de poursuivre ce projet avec l'optimisation boite noire qui sera ajoutée lors de la deuxième partie de ce projet ainsi qu'avec l'amélioration de l'interface graphique lors de la troisième partie.
 
 % ── Bibliographie ──────────────────────────────────────────
 \printbibliography[heading=bibintoc, title={Bibliographie}]
