@@ -423,7 +423,12 @@ Palier & Temps de calcul moyen (s) & Erreur moyenne (MW) \\
 
 \section{Effet de la modélisation sur la précision}
 
-% TODO : comparer résultats poly22 vs poly33
+Lors de la phase de modélisation, certaines turbines ont d'abord été testées avec un polynôme de degré 2 en deux variables (\texttt{poly22}), avant d'adopter définitivement le degré 3 (\texttt{poly33}). Bien que le modèle \texttt{poly22} produise des métriques d'ajustement apparemment acceptables, son comportement s'est révélé problématique lors de son intégration dans l'algorithme de programmation dynamique.
+
+En effet, les surfaces \texttt{poly22} se comportaient davantage comme des plans ou des surfaces quasi-linéaires que comme des collines de rendement. Ce comportement est insuffisant pour représenter fidèlement la réalité physique des turbines, dont la puissance atteint un maximum pour une combinaison optimale de hauteur nette et de débit, puis décroît de part et d'autre. En l'absence de ce pic bien défini, l'algorithme de programmation dynamique concentrait la totalité du débit disponible sur une seule turbine, cherchant à exploiter la croissance monotone de la surface modélisée plutôt qu'une répartition équilibrée entre les turbines. Ce comportement ne correspondait pas aux données réelles, où les turbines fonctionnent typiquement dans des plages de débit comparables.
+
+Le passage au modèle \texttt{poly33}, grâce aux termes cubiques supplémentaires, a permis de capturer correctement la courbure des collines de rendement. L'algorithme produit dès lors une répartition physiquement cohérente du débit entre les turbines, confirmant que la qualité de la modélisation des fonctions de production a un impact direct sur la validité de la solution optimale obtenue.
+
 
 % ── Chapitre 7 : Discussion ───────────────────────────────
 \chapter{Discussion}
