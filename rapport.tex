@@ -54,7 +54,7 @@
 
 % ── Bibliographie ──────────────────────────────────────────
 \usepackage[backend=biber, style=ieee]{biblatex}
-\addbibresource{references.bib}
+\usepackage{natbib}
 
 % ============================================================
 %  PAGE TITRE
@@ -115,6 +115,48 @@ Le présent rapport décrit la démarche méthodologique retenue, les résultats
 
 % ══════════════════════════════════════════════════════════════════════════════
 \part{Partie 1 - Modélisation des fonctions de production}
+
+\chapter{Méthodes de modélisation de fonctions}
+
+\section{Ajustement de courbes (\textit{curve fitting})}
+
+L'ajustement de courbes est une technique permettant de trouver une fonction mathématique qui représente au mieux un ensemble de données expérimentales. Contrairement à l'interpolation, qui force le modèle à passer exactement par chaque point, l'ajustement de courbes cherche une fonction qui minimise globalement l'écart aux données, ce qui le rend plus robuste au bruit de mesure. L'outil principal utilisé dans le cadre de ce projet est la \textit{Curve Fitting Toolbox} de MATLAB, qui offre une interface graphique permettant de visualiser les données, d'ajuster différents types de modèles et d'évaluer leur qualité à l'aide de métriques telles que le RMSE (\textit{Root Mean Square Error}) et le coefficient de détermination $R^2$.
+
+\section{Moindres carrés linéaires}
+
+La méthode des moindres carrés linéaires (\textit{Linear Least Squares}) est la technique d'ajustement la plus répandue. Elle consiste à minimiser la somme des carrés des résidus entre les valeurs observées et les valeurs prédites par le modèle :
+\begin{equation}
+  \min_{\boldsymbol{\beta}} \sum_{i=1}^{n} \left(y_i - f(\mathbf{x}_i, \boldsymbol{\beta})\right)^2
+\end{equation}
+Lorsque le modèle est linéaire par rapport aux paramètres $\boldsymbol{\beta}$ (ce qui est le cas des polynômes), ce problème admet une solution analytique fermée via l'équation normale :
+\begin{equation}
+  \boldsymbol{\beta} = (\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top \mathbf{y}
+\end{equation}
+où $\mathbf{X}$ est la matrice de conception contenant les termes du polynôme évalués aux points de données. Cette approche est efficace, exacte et ne nécessite pas d'itérations, ce qui la rend particulièrement adaptée à l'ajustement de polynômes sur de grands jeux de données.
+
+\section{Interpolation polynomiale}
+
+L'interpolation polynomiale consiste à construire un polynôme de degré $n-1$ passant exactement par $n$ points de données. Le polynôme de Lagrange en est la forme classique :
+\begin{equation}
+  P(x) = \sum_{i=0}^{n-1} y_i \prod_{\substack{j=0 \\ j \neq i}}^{n-1} \frac{x - x_j}{x_i - x_j}
+\end{equation}
+Bien que cette méthode garantisse le passage exact par tous les points, elle souffre du phénomène de Runge pour des degrés élevés : des oscillations importantes apparaissent aux extrémités du domaine. Pour des jeux de données de grande taille comme ceux de ce projet (plusieurs années à 2 minutes), l'interpolation polynomiale globale est donc inadaptée.
+
+\section{Splines}
+
+Les splines sont des fonctions polynomiales par morceaux raccordées en des points appelés nœuds, avec continuité des dérivées aux jonctions. Les splines cubiques naturelles, par exemple, sont des polynômes de degré 3 sur chaque intervalle, avec continuité de la fonction et de ses deux premières dérivées. Elles offrent une grande souplesse d'ajustement locale sans les oscillations des polynômes globaux de haut degré. En deux dimensions, les \textit{thin-plate splines} permettent d'interpoler des surfaces de manière lisse. Cependant, les splines produisent des modèles moins compacts que les polynômes globaux et sont plus difficiles à intégrer directement dans un algorithme d'optimisation.
+
+\section{Plans tangents et modélisation linéaire par morceaux}
+
+Un plan tangent en un point $(h_0, q_0)$ d'une surface $P(h,q)$ est l'approximation linéaire locale de cette surface :
+\begin{equation}
+  P(h,q) \approx P(h_0,q_0) + \frac{\partial P}{\partial h}\bigg|_{(h_0,q_0)}(h-h_0) + \frac{\partial P}{\partial q}\bigg|_{(h_0,q_0)}(q-q_0)
+\end{equation}
+Cette approche est valide uniquement dans un voisinage restreint du point de linéarisation. La modélisation linéaire par morceaux généralise ce concept en divisant le domaine en régions et en ajustant un modèle linéaire sur chacune. Elle permet une meilleure représentation globale tout en conservant la simplicité analytique, au prix d'une gestion de la discontinuité aux frontières entre régions.
+
+\section{Méthode retenue}
+
+Pour ce projet, la régression polynomiale multivariée par moindres carrés linéaires (\textit{Linear Least Squares}) a été retenue, en utilisant la forme \texttt{poly33} de la \textit{Curve Fitting Toolbox} de MATLAB. Le choix de cette méthode d'ajustement s'est fait naturellement puisqu'il s'agit de la méthode par défaut de MATLAB pour l'ajustement de polynômes.
 
 \chapter{Méthodologie retenue - Partie 1}
 
@@ -210,7 +252,7 @@ La figure~\ref{fig:elav} présente le nuage de points des données réelles supe
 
 \begin{figure}[H]
   \centering
-   \includegraphics[width=0.75\textwidth]{figures/elav_fit.png}
+  \includegraphics[width=0.75\textwidth]{figures/elav_fit.png}
   \caption{Élévation avale en fonction du débit total - données réelles et modèle poly2}
   \label{fig:elav}
 \end{figure}
@@ -252,35 +294,35 @@ Les figures~\ref{fig:t1} à~\ref{fig:t5} présentent, pour chaque turbine, le nu
 
 \begin{figure}[H]
   \centering
-   \includegraphics[width=0.75\textwidth]{figures/turbine1_fit.png}
+  \includegraphics[width=0.75\textwidth]{figures/turbine1_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 1}
   \label{fig:t1}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-   \includegraphics[width=0.75\textwidth]{figures/turbine2_fit.png}
+  \includegraphics[width=0.75\textwidth]{figures/turbine2_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 2}
   \label{fig:t2}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-   \includegraphics[width=0.75\textwidth]{figures/turbine3_fit.png}
+  \includegraphics[width=0.75\textwidth]{figures/turbine3_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 3}
   \label{fig:t3}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-   \includegraphics[width=0.75\textwidth]{figures/turbine4_fit.png}
+  \includegraphics[width=0.75\textwidth]{figures/turbine4_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 4}
   \label{fig:t4}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-   \includegraphics[width=0.75\textwidth]{figures/turbine5_fit.png}
+  \includegraphics[width=0.75\textwidth]{figures/turbine5_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 5}
   \label{fig:t5}
 \end{figure}
@@ -444,5 +486,8 @@ Pour conclure, ce laboratoire nous a permis de mieux comprendre plusieurs aspect
 
 % ── Bibliographie ──────────────────────────────────────────
 \printbibliography[heading=bibintoc, title={Bibliographie}]
+\begin{thebibliography}{9}
+\bibitem{bellman1957} R. Bellman, \textit{Dynamic Programming}. Princeton University Press, 1957.
+\end{thebibliography}
 
 \end{document}
