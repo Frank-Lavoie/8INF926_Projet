@@ -402,7 +402,7 @@ def verifier():
         qtot = df['Qtot (m3/s)'].iloc[i]
 
         jsonObject = {
-            'turbines_disponibles': [1,2,3,4],
+            'turbines_disponibles': [1,2,3,4,5],
             'debit_total': qtot,
             'niveau_amont': niv_amont,
             'palier' : 5
