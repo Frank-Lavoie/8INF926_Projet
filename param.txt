@@ -1,0 +1,14 @@
+DIMENSION      4
+
+BB_EXE         python nomad.py
+
+BB_OUTPUT_TYPE OBJ PB PB
+
+X0             100 100 100 100
+
+LOWER_BOUND    0 0 0 0
+UPPER_BOUND    160 160 160 160
+
+BB_INPUT_TYPE  (I I I I)
+
+GRANULARITY    5 5 5 5

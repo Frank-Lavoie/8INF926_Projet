@@ -104,3 +104,23 @@ class Centrale:
 
     # def __str__(self):
     #     return f"Centrale {self.nom} avec débits: {self.q1}, {self.q2}, {self.q3}, {self.q4}, {self.q5}"
+
+    def boite_noire(self, debit, niveau_amont, x):
+        self.set_debit_total(debit)
+        elevation_aval = self.elevation_aval()
+
+        # puissance totale
+        P_tot = 0
+        for i in range(len(self.turbines)):
+            self.turbines[i].set_niveau_amont(niveau_amont)
+            P_tot += self.turbines[i].calculer_puissance(x[i], elevation_aval)
+
+        f = -P_tot  # maximisation
+
+        # contraintes
+        somme_Q = sum(x)
+
+        g1 = somme_Q - debit
+        g2 = debit - somme_Q
+
+        return f, [g1, g2]
