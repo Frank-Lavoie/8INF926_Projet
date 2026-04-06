@@ -410,8 +410,16 @@ def verifier():
         niv_amont = df['Niv Amont (m)'].iloc[i]
         qtot = df['Qtot (m3/s)'].iloc[i]
 
+        # Déduire les turbines actives depuis les données réelles (Q != 0)
+        turbines_actives = [
+            j + 1 for j, col in enumerate(cols_turbines)
+            if turbines_data[i][j] != 0
+        ]
+        if not turbines_actives:
+            turbines_actives = [1]  # fallback sécuritaire
+
         jsonObject = {
-            'turbines_disponibles': [1,2,3,4,5],
+            'turbines_disponibles': turbines_actives,
             'debit_total': qtot,
             'niveau_amont': niv_amont,
             'palier' : 5
@@ -837,11 +845,25 @@ def stats_nomad():
     nrows = 100
     df = pd.read_excel("data.xlsx", nrows=nrows)
 
+    cols_turbines = ['Q1 (m3/s)', 'Q2 (m3/s)', 'Q3 (m3/s)', 'Q4 (m3/s)', 'Q5 (m3/s)']
+    turbines_data = df[cols_turbines].values
+
     def evaluer_ligne(i):
         niv_amont = df['Niv Amont (m)'].iloc[i]
         qtot      = df['Qtot (m3/s)'].iloc[i]
+
+        # Déduire les turbines actives depuis les données réelles (Q != 0)
+        turbines_actives = [
+            j + 1 for j, col in enumerate(cols_turbines)
+            if turbines_data[i][j] != 0
+        ]
+        if not turbines_actives:
+            turbines_actives = [1]  # fallback sécuritaire
+
+        nb_turbines_reel = len(turbines_actives)
+
         payload = {
-            'turbines_disponibles': [1, 2, 3, 4, 5],
+            'turbines_disponibles': turbines_actives,
             'debit_total':  qtot,
             'niveau_amont': niv_amont,
             'debit_max':    160,
@@ -850,7 +872,9 @@ def stats_nomad():
         response_json = requests.post('http://127.0.0.1:5000/nomad', json=payload).json()
         duree = time.perf_counter() - start
         puissance_estimee = response_json.get('puissance', 0)
-        return i, puissance_estimee, duree
+        solution = response_json.get('solution', {})
+        nb_turbines_estimee = sum(1 for v in solution.values() if v != 0)
+        return i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree
 
     resultats = [None] * nrows
     temps_total = 0
@@ -858,24 +882,32 @@ def stats_nomad():
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {executor.submit(evaluer_ligne, i): i for i in range(nrows)}
         for future in as_completed(futures):
-            i, puissance_estimee, duree = future.result()
-            resultats[i] = (puissance_estimee, duree)
+            i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree = future.result()
+            resultats[i] = (puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree)
             temps_total += duree
 
     total_diff_puissance = 0
+    nb_diff_turbines = 0
     rows_html = ""
     for i in range(nrows):
-        puissance_estimee, _ = resultats[i]
+        puissance_estimee, nb_turbines_reel, nb_turbines_estimee, _ = resultats[i]
         puissance_reel    = df['Puissance totale'].iloc[i]
         diff_puissance    = abs(puissance_reel - puissance_estimee)
+        diff_turbines     = abs(nb_turbines_reel - nb_turbines_estimee)
         total_diff_puissance += diff_puissance
+        if diff_turbines != 0:
+            nb_diff_turbines += 1
         puissance_style = "background-color:red;" if diff_puissance > 20 else ""
+        turbine_style   = "background-color:red;" if diff_turbines != 0 else ""
         rows_html += f"""
         <tr>
             <td>{i}</td>
             <td>{puissance_reel:.2f}</td>
             <td>{puissance_estimee:.2f}</td>
             <td style="{puissance_style}">{diff_puissance:.2f}</td>
+            <td>{nb_turbines_reel}</td>
+            <td>{nb_turbines_estimee}</td>
+            <td style="{turbine_style}">{diff_turbines}</td>
         </tr>
         """
 
@@ -884,6 +916,7 @@ def stats_nomad():
     <h2>Sommaire — NOMAD</h2>
     <ul>
         <li>Moyenne des différences de puissance : <b>{moyenne_diff:.2f}</b> MW</li>
+        <li>Nombre de différences de turbines : <b>{nb_diff_turbines}</b> / {nrows}</li>
         <li>Temps moyen par optimisation : <b>{temps_total / nrows:.2f}</b> s</li>
     </ul>
     <p><a href="/nomad-page">← Retour NOMAD</a></p>
@@ -893,7 +926,10 @@ def stats_nomad():
             <th>Ligne</th>
             <th>Puissance réelle</th>
             <th>Puissance estimée</th>
-            <th>Différence</th>
+            <th>Différence puissance</th>
+            <th>Turbines réelles</th>
+            <th>Turbines estimées</th>
+            <th>Différence turbines</th>
         </tr>
         {rows_html}
     </table>
