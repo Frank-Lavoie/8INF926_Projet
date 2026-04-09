@@ -410,16 +410,15 @@ def verifier():
         niv_amont = df['Niv Amont (m)'].iloc[i]
         qtot = df['Qtot (m3/s)'].iloc[i]
 
-        # Déduire les turbines actives depuis les données réelles (Q != 0)
-        turbines_actives = [
+        # Turbines inactives dans les données réelles (Q == 0)
+        turbines_inactives_reel = [
             j + 1 for j, col in enumerate(cols_turbines)
-            if turbines_data[i][j] != 0
+            if turbines_data[i][j] == 0
         ]
-        if not turbines_actives:
-            turbines_actives = [1]  # fallback sécuritaire
 
+        # Toujours passer les 5 turbines à l'optimiseur
         jsonObject = {
-            'turbines_disponibles': turbines_actives,
+            'turbines_disponibles': [1, 2, 3, 4, 5],
             'debit_total': qtot,
             'niveau_amont': niv_amont,
             'palier' : 5
@@ -432,12 +431,12 @@ def verifier():
         ).json()
         temps_total += time.perf_counter() - start
 
-        # turbines estimées
+        # turbines estimées (Q != 0 dans la solution)
         nb_turbines_estimee = sum(
             v != 0 for v in response_json['solution_indexed'].values()
         )
 
-        # turbines réelles
+        # turbines réelles actives (Q != 0 dans les données)
         nb_turbines_reel = (turbines_data[i] != 0).sum()
 
         puissance_reel = df['Puissance totale'].iloc[i]
@@ -454,6 +453,16 @@ def verifier():
         puissance_style = "background-color:red;" if diff_puissance > 20 else ""
         turbine_style = "background-color:red;" if diff_turbines != 0 else ""
 
+        # Construire l'affichage des 5 turbines avec inactives grisées
+        sol = response_json.get('solution_indexed', {})
+        turbines_detail = ""
+        for t in range(1, 6):
+            q_val = sol.get(t, 0)
+            is_inactive_reel = t in turbines_inactives_reel
+            cell_style = "color:#aaa;font-style:italic;" if is_inactive_reel else ""
+            label = f"{q_val} m³/s" + (" (inactif)" if is_inactive_reel else "")
+            turbines_detail += f'<td style="{cell_style}">T{t}: {label}</td>'
+
         rows_html += f"""
         <tr>
             <td>{i}</td>
@@ -463,6 +472,7 @@ def verifier():
             <td>{nb_turbines_reel}</td>
             <td>{nb_turbines_estimee}</td>
             <td style="{turbine_style}">{diff_turbines}</td>
+            {turbines_detail}
         </tr>
         """
 
@@ -487,6 +497,11 @@ def verifier():
             <th>Turbines réelles</th>
             <th>Turbines estimées</th>
             <th>Différence turbines</th>
+            <th>T1</th>
+            <th>T2</th>
+            <th>T3</th>
+            <th>T4</th>
+            <th>T5</th>
         </tr>
 
         {rows_html}
@@ -852,18 +867,17 @@ def stats_nomad():
         niv_amont = df['Niv Amont (m)'].iloc[i]
         qtot      = df['Qtot (m3/s)'].iloc[i]
 
-        # Déduire les turbines actives depuis les données réelles (Q != 0)
-        turbines_actives = [
+        # Turbines inactives dans les données réelles (Q == 0)
+        turbines_inactives_reel = [
             j + 1 for j, col in enumerate(cols_turbines)
-            if turbines_data[i][j] != 0
+            if turbines_data[i][j] == 0
         ]
-        if not turbines_actives:
-            turbines_actives = [1]  # fallback sécuritaire
 
-        nb_turbines_reel = len(turbines_actives)
+        nb_turbines_reel = int((turbines_data[i] != 0).sum())
 
+        # Toujours passer les 5 turbines
         payload = {
-            'turbines_disponibles': turbines_actives,
+            'turbines_disponibles': [1, 2, 3, 4, 5],
             'debit_total':  qtot,
             'niveau_amont': niv_amont,
             'debit_max':    160,
@@ -874,7 +888,7 @@ def stats_nomad():
         puissance_estimee = response_json.get('puissance', 0)
         solution = response_json.get('solution', {})
         nb_turbines_estimee = sum(1 for v in solution.values() if v != 0)
-        return i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree
+        return i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree, solution, turbines_inactives_reel
 
     resultats = [None] * nrows
     temps_total = 0
@@ -882,15 +896,15 @@ def stats_nomad():
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {executor.submit(evaluer_ligne, i): i for i in range(nrows)}
         for future in as_completed(futures):
-            i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree = future.result()
-            resultats[i] = (puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree)
+            i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree, solution, turbines_inactives_reel = future.result()
+            resultats[i] = (puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree, solution, turbines_inactives_reel)
             temps_total += duree
 
     total_diff_puissance = 0
     nb_diff_turbines = 0
     rows_html = ""
     for i in range(nrows):
-        puissance_estimee, nb_turbines_reel, nb_turbines_estimee, _ = resultats[i]
+        puissance_estimee, nb_turbines_reel, nb_turbines_estimee, _, solution, turbines_inactives_reel = resultats[i]
         puissance_reel    = df['Puissance totale'].iloc[i]
         diff_puissance    = abs(puissance_reel - puissance_estimee)
         diff_turbines     = abs(nb_turbines_reel - nb_turbines_estimee)
@@ -899,6 +913,16 @@ def stats_nomad():
             nb_diff_turbines += 1
         puissance_style = "background-color:red;" if diff_puissance > 20 else ""
         turbine_style   = "background-color:red;" if diff_turbines != 0 else ""
+
+        # Colonnes détail des 5 turbines
+        turbines_detail = ""
+        for t in range(1, 6):
+            q_val = solution.get(t, solution.get(str(t), 0))
+            is_inactive_reel = t in turbines_inactives_reel
+            cell_style = "color:#aaa;font-style:italic;" if is_inactive_reel else ""
+            label = f"{q_val} m³/s" + (" (inactif)" if is_inactive_reel else "")
+            turbines_detail += f'<td style="{cell_style}">T{t}: {label}</td>'
+
         rows_html += f"""
         <tr>
             <td>{i}</td>
@@ -908,6 +932,7 @@ def stats_nomad():
             <td>{nb_turbines_reel}</td>
             <td>{nb_turbines_estimee}</td>
             <td style="{turbine_style}">{diff_turbines}</td>
+            {turbines_detail}
         </tr>
         """
 
@@ -930,6 +955,11 @@ def stats_nomad():
             <th>Turbines réelles</th>
             <th>Turbines estimées</th>
             <th>Différence turbines</th>
+            <th>T1</th>
+            <th>T2</th>
+            <th>T3</th>
+            <th>T4</th>
+            <th>T5</th>
         </tr>
         {rows_html}
     </table>

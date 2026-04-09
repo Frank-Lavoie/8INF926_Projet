@@ -23,9 +23,8 @@ COLS_TURBINES = ['Q1 (m3/s)', 'Q2 (m3/s)', 'Q3 (m3/s)', 'Q4 (m3/s)', 'Q5 (m3/s)'
 # Helpers
 
 def turbines_actives_depuis_excel(row_data):
-    """Retourne la liste des numéros de turbines actives (Q != 0) pour une ligne."""
-    actives = [j + 1 for j, q in enumerate(row_data) if q != 0]
-    return actives if actives else [1]
+    """Retourne toujours les 5 turbines ; celles à Q=0 seront inactives (débit=0)."""
+    return [1, 2, 3, 4, 5]
 
 
 def run_pd(qtot, niv_amont, turbines):
@@ -69,6 +68,7 @@ LOWER_BOUND    ( {lb_str} )
 UPPER_BOUND    ( {ub_str} )
 BB_INPUT_TYPE  ( {type_str} )
 GRANULARITY    ( {gran_str} )
+MAX_BB_EVAL   80
 """
         with open(os.path.join(tmpdir, 'param.txt'), 'w') as pf:
             pf.write(param)

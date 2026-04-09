@@ -1,0 +1,6 @@
+﻿Métrique,Moyenne,Médiane,Min,Max
+Erreur abs. PD (MW),9.088,9.566,4.291,12.097
+Erreur abs. NOMAD (MW),7.9,8.579,2.006,11.173
+Temps PD (s),0.033,0.031,0.028,0.05
+Temps NOMAD (s),6.005,5.947,5.799,6.54
+Itérations NOMAD,80.0,80.0,80.0,80.0
