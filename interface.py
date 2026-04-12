@@ -798,6 +798,8 @@ BB_INPUT_TYPE  ( {type_str} )
 
 GRANULARITY    ( {gran_str} )
 
+MAX_BB_EVAL   80
+
 SOLUTION_FILE  sol.txt
 """
             param_path = os.path.join(tmpdir, 'param.txt')
