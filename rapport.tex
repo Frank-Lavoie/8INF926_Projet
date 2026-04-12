@@ -54,7 +54,7 @@
 
 % ── Bibliographie ──────────────────────────────────────────
 \usepackage[backend=biber, style=ieee]{biblatex}
-\usepackage{natbib}
+\addbibresource{references.bib}
 
 % ============================================================
 %  PAGE TITRE
@@ -252,7 +252,7 @@ La figure~\ref{fig:elav} présente le nuage de points des données réelles supe
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figures/elav_fit.png}
+   \includegraphics[width=0.75\textwidth]{figures/elav_fit.png}
   \caption{Élévation avale en fonction du débit total - données réelles et modèle poly2}
   \label{fig:elav}
 \end{figure}
@@ -294,35 +294,35 @@ Les figures~\ref{fig:t1} à~\ref{fig:t5} présentent, pour chaque turbine, le nu
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figures/turbine1_fit.png}
+   \includegraphics[width=0.75\textwidth]{figures/turbine1_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 1}
   \label{fig:t1}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figures/turbine2_fit.png}
+   \includegraphics[width=0.75\textwidth]{figures/turbine2_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 2}
   \label{fig:t2}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figures/turbine3_fit.png}
+   \includegraphics[width=0.75\textwidth]{figures/turbine3_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 3}
   \label{fig:t3}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figures/turbine4_fit.png}
+   \includegraphics[width=0.75\textwidth]{figures/turbine4_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 4}
   \label{fig:t4}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figures/turbine5_fit.png}
+   \includegraphics[width=0.75\textwidth]{figures/turbine5_fit.png}
   \caption{Puissance produite en fonction de la hauteur nette et du débit - Turbine 5}
   \label{fig:t5}
 \end{figure}
@@ -486,8 +486,23 @@ Pour conclure, ce laboratoire nous a permis de mieux comprendre plusieurs aspect
 
 % ── Bibliographie ──────────────────────────────────────────
 \printbibliography[heading=bibintoc, title={Bibliographie}]
-\begin{thebibliography}{9}
-\bibitem{bellman1957} R. Bellman, \textit{Dynamic Programming}. Princeton University Press, 1957.
-\end{thebibliography}
+
+\chapter{Annexe}
+\section{Interfaces Projet 1}
+
+\begin{figure}[H]
+  \centering
+   \includegraphics[width=0.40\textwidth]{figures/Central_interface.png}
+  \caption{Interface de test du projet 1}
+  \label{fig:t2}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+   \includegraphics[width=1\textwidth]{figures/validation.png}
+  \caption{Validation des 100 premières lignes}
+  \label{fig:t2}
+\end{figure}
 
 \end{document}
+
