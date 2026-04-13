@@ -195,20 +195,26 @@ def nomad_optimiser():
 
             param_content = f"""DIMENSION      {dim}
 
-BB_EXE         bb.bat
+            BB_EXE         bb.bat
 
-BB_OUTPUT_TYPE OBJ PB PB
+            BB_OUTPUT_TYPE OBJ PB PB
 
-X0             ( {x0_str} )
+            X0             ( {x0_str} )
 
-LOWER_BOUND    ( {lb_str} )
-UPPER_BOUND    ( {ub_str} )
+            LOWER_BOUND    ( {lb_str} )
+            UPPER_BOUND    ( {ub_str} )
 
-BB_INPUT_TYPE  ( {type_str} )
+            BB_INPUT_TYPE  ( {type_str} )
 
-GRANULARITY    ( {gran_str} )
+            GRANULARITY    ( {gran_str} )
 
+<<<<<<< Updated upstream
 SOLUTION_FILE  sol.txt
+=======
+            MAX_BB_EVAL   80
+
+            SOLUTION_FILE  sol.txt
+>>>>>>> Stashed changes
 """
             param_path = os.path.join(tmpdir, 'param.txt')
             with open(param_path, 'w') as pf:
@@ -273,6 +279,8 @@ def stats_nomad():
     cols_turbines = ['Q1 (m3/s)', 'Q2 (m3/s)', 'Q3 (m3/s)', 'Q4 (m3/s)', 'Q5 (m3/s)']
     turbines_data = df[cols_turbines].values
 
+    rows = []
+
     def evaluer_ligne(i):
         niv_amont = df['Niv Amont (m)'].iloc[i]
         qtot      = df['Qtot (m3/s)'].iloc[i]
@@ -314,6 +322,7 @@ def stats_nomad():
     total_diff_puissance = 0
     nb_diff_turbines = 0
     rows_html = ""
+    print(nrows)
     for i in range(nrows):
         puissance_estimee, nb_turbines_reel, nb_turbines_estimee, _ = resultats[i]
         puissance_reel    = df['Puissance totale'].iloc[i]
@@ -324,42 +333,36 @@ def stats_nomad():
             nb_diff_turbines += 1
         puissance_style = "background-color:red;" if diff_puissance > 20 else ""
         turbine_style   = "background-color:red;" if diff_turbines != 0 else ""
-        rows_html += f"""
-        <tr>
-            <td>{i}</td>
-            <td>{puissance_reel:.2f}</td>
-            <td>{puissance_estimee:.2f}</td>
-            <td style="{puissance_style}">{diff_puissance:.2f}</td>
-            <td>{nb_turbines_reel}</td>
-            <td>{nb_turbines_estimee}</td>
-            <td style="{turbine_style}">{diff_turbines}</td>
-        </tr>
-        """
 
-    moyenne_diff = total_diff_puissance / nrows
-    html = f"""
-    <h2>Sommaire — NOMAD</h2>
-    <ul>
-        <li>Moyenne des différences de puissance : <b>{moyenne_diff:.2f}</b> MW</li>
-        <li>Nombre de différences de turbines : <b>{nb_diff_turbines}</b> / {nrows}</li>
-        <li>Temps moyen par optimisation : <b>{temps_total / nrows:.2f}</b> s</li>
-    </ul>
-    <p><a href="/nomad-page">← Retour NOMAD</a></p>
-    <h2>Détails</h2>
-    <table border="1" cellpadding="5" cellspacing="0">
-        <tr>
-            <th>Ligne</th>
-            <th>Puissance réelle</th>
-            <th>Puissance estimée</th>
-            <th>Différence puissance</th>
-            <th>Turbines réelles</th>
-            <th>Turbines estimées</th>
-            <th>Différence turbines</th>
-        </tr>
-        {rows_html}
-    </table>
-    """
-    return html
+        # Colonnes détail des 5 turbines
+        turbines_detail = ""
+        for t in range(1, 6):
+            q_val = solution.get(t, solution.get(str(t), 0))
+            is_inactive_reel = t in turbines_inactives_reel
+            cell_style = "color:#aaa;font-style:italic;" if is_inactive_reel else ""
+            label = f"{q_val} m³/s" + (" (inactif)" if is_inactive_reel else "")
+            turbines_detail += f'<td style="{cell_style}">T{t}: {label}</td>'
+
+        puissance_style = "background-color:red;" if diff_puissance > 20 else ""
+        turbine_style = "background-color:red;" if diff_turbines != 0 else ""
+
+        rows.append({
+          "i": i,
+          "puissance_reelle": round(puissance_reel, 2),
+          "puissance_estimee": round(puissance_estimee, 2),
+          "diff_puissance": round(diff_puissance, 2),
+          "puissance_style": puissance_style,
+          "nb_turbines_reel": nb_turbines_reel,
+          "nb_turbines_estimee": nb_turbines_estimee,
+          "diff_turbines": diff_turbines,
+          "turbine_style": turbine_style,
+          "turbines_detail" : turbines_detail
+
+        })
+
+    moyenne_diff_puissance = total_diff_puissance / nrows
+    return render_template('nomad_stats.html',rows=rows, moyenne_diff_puissance=moyenne_diff_puissance, temps_total=temps_total, nb_diff_turbines=nb_diff_turbines, nrows=nrows)
+
 
 
 if __name__ == '__main__':
