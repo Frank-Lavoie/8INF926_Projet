@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Centrale Hydraulique — Optimisation</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+<header>
+  <h1>Centrale <em>Hydroélectrique</em></h1>
+  <p>{{title}}</p>
+  <p style="margin-top:14px;display:flex;gap:24px;justify-content:center;">
+    
+    <a href="/" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent);text-decoration:none;letter-spacing:0.08em;text-transform:uppercase;">Programmation dynamique →</a>
+    <a href="/nomad-page" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent);text-decoration:none;letter-spacing:0.08em;text-transform:uppercase;">Boîte noire — NOMAD →</a>
+    <a href="/stats-pd" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent);text-decoration:none;letter-spacing:0.08em;text-transform:uppercase;">Statistiques PD →</a>
+    <a href="/stats-nomad" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--accent);text-decoration:none;letter-spacing:0.08em;text-transform:uppercase;">Statistiques NOMAD →</a>
+  </p>
+</header>
+
+{% block content %}{% endblock %}
+
+</body>
+<footer>8INF926 - Projet</footer>
