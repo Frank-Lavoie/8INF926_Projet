@@ -208,13 +208,9 @@ def nomad_optimiser():
 
             GRANULARITY    ( {gran_str} )
 
-<<<<<<< Updated upstream
-SOLUTION_FILE  sol.txt
-=======
             MAX_BB_EVAL   80
 
             SOLUTION_FILE  sol.txt
->>>>>>> Stashed changes
 """
             param_path = os.path.join(tmpdir, 'param.txt')
             with open(param_path, 'w') as pf:
@@ -274,29 +270,27 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 @app.route('/stats-nomad')
 def stats_nomad():
     nrows = 100
+    rows = []
     df = pd.read_excel("data.xlsx", nrows=nrows)
 
     cols_turbines = ['Q1 (m3/s)', 'Q2 (m3/s)', 'Q3 (m3/s)', 'Q4 (m3/s)', 'Q5 (m3/s)']
     turbines_data = df[cols_turbines].values
 
-    rows = []
-
     def evaluer_ligne(i):
         niv_amont = df['Niv Amont (m)'].iloc[i]
         qtot      = df['Qtot (m3/s)'].iloc[i]
 
-        # Déduire les turbines actives depuis les données réelles (Q != 0)
-        turbines_actives = [
+        # Turbines inactives dans les données réelles (Q == 0)
+        turbines_inactives_reel = [
             j + 1 for j, col in enumerate(cols_turbines)
-            if turbines_data[i][j] != 0
+            if turbines_data[i][j] == 0
         ]
-        if not turbines_actives:
-            turbines_actives = [1]  # fallback sécuritaire
 
-        nb_turbines_reel = len(turbines_actives)
+        nb_turbines_reel = int((turbines_data[i] != 0).sum())
 
+        # Toujours passer les 5 turbines
         payload = {
-            'turbines_disponibles': turbines_actives,
+            'turbines_disponibles': [1, 2, 3, 4, 5],
             'debit_total':  qtot,
             'niveau_amont': niv_amont,
             'debit_max':    160,
@@ -307,7 +301,7 @@ def stats_nomad():
         puissance_estimee = response_json.get('puissance', 0)
         solution = response_json.get('solution', {})
         nb_turbines_estimee = sum(1 for v in solution.values() if v != 0)
-        return i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree
+        return i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree, solution, turbines_inactives_reel
 
     resultats = [None] * nrows
     temps_total = 0
@@ -315,16 +309,15 @@ def stats_nomad():
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {executor.submit(evaluer_ligne, i): i for i in range(nrows)}
         for future in as_completed(futures):
-            i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree = future.result()
-            resultats[i] = (puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree)
+            i, puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree, solution, turbines_inactives_reel = future.result()
+            resultats[i] = (puissance_estimee, nb_turbines_reel, nb_turbines_estimee, duree, solution, turbines_inactives_reel)
             temps_total += duree
 
     total_diff_puissance = 0
     nb_diff_turbines = 0
     rows_html = ""
-    print(nrows)
     for i in range(nrows):
-        puissance_estimee, nb_turbines_reel, nb_turbines_estimee, _ = resultats[i]
+        puissance_estimee, nb_turbines_reel, nb_turbines_estimee, _, solution, turbines_inactives_reel = resultats[i]
         puissance_reel    = df['Puissance totale'].iloc[i]
         diff_puissance    = abs(puissance_reel - puissance_estimee)
         diff_turbines     = abs(nb_turbines_reel - nb_turbines_estimee)
@@ -342,9 +335,6 @@ def stats_nomad():
             cell_style = "color:#aaa;font-style:italic;" if is_inactive_reel else ""
             label = f"{q_val} m³/s" + (" (inactif)" if is_inactive_reel else "")
             turbines_detail += f'<td style="{cell_style}">T{t}: {label}</td>'
-
-        puissance_style = "background-color:red;" if diff_puissance > 20 else ""
-        turbine_style = "background-color:red;" if diff_turbines != 0 else ""
 
         rows.append({
           "i": i,
