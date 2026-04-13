@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Sommaire</h2>
+    <ul>
+        <li>Moyenne des différences de puissance : <b>{{moyenne_diff_puissance}}</b></li>
+        <li>Nombre de différences de turbines : <b>{{nb_diff_turbines}}</b> / {{nrows}}</li>
+        <li>Temps moyen par optimisation : {{temps_total / nrows}}</li>
+    </ul>
+
+    <h2>Détails</h2>
+
+    <table border="1" cellpadding="5" cellspacing="0">
+        <tr>
+            <th>Ligne</th>
+            <th>Puissance réelle</th>
+            <th>Puissance estimée</th>
+            <th>Différence puissance</th>
+            <th>Turbines réelles</th>
+            <th>Turbines estimées</th>
+            <th>Différence turbines</th>
+        </tr>
+
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.i + 1 }}</td>
+            <td>{{ row.puissance_reelle }}</td>
+            <td>{{ row.puissance_estimee }}</td>
+            <td style="{{ row.puissance_style }}">{{ row.diff_puissance }}</td>
+            <td>{{ row.nb_turbines_reel }}</td>
+            <td>{{ row.nb_turbines_estimee }}</td>
+            <td style="{{ row.turbine_style }}">{{ row.diff_turbines }}</td>
+        </tr>
+        {% endfor %}
+
+    </table>
+    {%endblock %}

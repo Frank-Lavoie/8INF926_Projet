@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="card-title">Configuration</div>
+  <div class="field">
+    <div class="turbine-section-header">
+      <label style="margin-bottom:0">Turbines disponibles</label>
+      <div class="chip-actions">
+        <button class="btn-small" onclick="toutCocher()">Tout cocher</button>
+        <button class="btn-small" onclick="toutDecocher()">Tout décocher</button>
+      </div>
+    </div>
+    <div class="turbine-checks" id="turbine-checks"></div>
+    <div class="nb-active" id="nb-active-label"></div>
+  </div>
+  <div class="field">
+    <label>Débit max par turbine (m³/s)</label>
+    <input type="number" id="debit_max" value="160" min="1" max="400" step="1">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Paramètres d'optimisation</div>
+  <div class="field">
+    <label>Débit total à répartir (m³/s)</label>
+    <input type="number" id="debit_total" value="565" min="5" max="800" step="5">
+  </div>
+  <div class="field">
+    <label>Niveau amont (m)</label>
+    <input type="number" id="niveau_amont" value="137.76" min="100" max="200" step="0.01">
+  </div>
+  <button class="btn-main" id="btn" onclick="lancer()">Lancer NOMAD</button>
+</div>
+
+<div id="spinner"><span class="dot-anim">Optimisation en cours</span></div>
+<div id="result-section"></div>
+
+
+
+<script>
+function genererTurbines() {
+  const container = document.getElementById('turbine-checks');
+  container.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const chip = document.createElement('div');
+    chip.className = 'turbine-chip on';
+    chip.dataset.id = i;
+    chip.innerHTML = '<span class="dot"></span>T' + i;
+    chip.onclick = () => { chip.classList.toggle('on'); majCompteur(); };
+    container.appendChild(chip);
+  }
+  majCompteur();
+}
+function majCompteur() {
+  const total   = document.querySelectorAll('.turbine-chip').length;
+  const actives = document.querySelectorAll('.turbine-chip.on').length;
+  document.getElementById('nb-active-label').innerHTML =
+    '<span>' + actives + '</span> / ' + total + ' turbine' + (total>1?'s':'') + ' disponible' + (actives>1?'s':'');
+}
+function toutCocher()   { document.querySelectorAll('.turbine-chip').forEach(c=>c.classList.add('on'));    majCompteur(); }
+function toutDecocher() { document.querySelectorAll('.turbine-chip').forEach(c=>c.classList.remove('on')); majCompteur(); }
+function getTurbinesDisponibles() {
+  return Array.from(document.querySelectorAll('.turbine-chip.on')).map(c => parseInt(c.dataset.id));
+}
+genererTurbines();
+
+async function lancer() {
+  const btn     = document.getElementById('btn');
+  const spinner = document.getElementById('spinner');
+  const section = document.getElementById('result-section');
+
+  const turbines_disponibles = getTurbinesDisponibles();
+  if (turbines_disponibles.length === 0) {
+    section.innerHTML = '<div class="card"><div class="error-box">Veuillez sélectionner au moins une turbine.</div></div>';
+    section.classList.add('visible');
+    return;
+  }
+
+  btn.disabled = true;
+  spinner.classList.add('visible');
+  section.classList.remove('visible');
+  section.innerHTML = '';
+
+  const payload = {
+    turbines_disponibles: turbines_disponibles,
+    debit_total:  parseFloat(document.getElementById('debit_total').value),
+    niveau_amont: parseFloat(document.getElementById('niveau_amont').value),
+    debit_max:    parseInt(document.getElementById('debit_max').value),
+  };
+
+  try {
+    const res  = await fetch('/nomad', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json();
+    spinner.classList.remove('visible');
+    btn.disabled = false;
+
+    if (data.error) {
+      section.innerHTML = '<div class="card"><div class="error-box">' + data.error + '</div></div>';
+      section.classList.add('visible');
+      return;
+    }
+
+    const activeSet = new Set(turbines_disponibles);
+    let rows = '';
+    for (let i = 1; i <= 5; i++) {
+      const isActive = activeSet.has(i);
+      const q   = isActive ? (data.solution[i] ?? 0) : null;
+      const pct = isActive ? ((q / payload.debit_max) * 100).toFixed(1) : 100;
+      const label = isActive ? q + ' m³/s' : 'indisponible';
+      rows += '<div class="turbine-row' + (isActive?'':' inactive') + '" style="animation-delay:' + ((i-1)*55) + 'ms">' +
+        '<span class="turbine-num">T' + i + '</span>' +
+        '<div class="bar-wrap"><div class="bar-fill" style="width:0%;background:' + (isActive?'var(--accent)':'var(--border)') + '" data-pct="' + pct + '"></div></div>' +
+        '<span class="debit-val">' + label + '</span></div>';
+    }
+
+    section.innerHTML =
+      '<div class="card">' +
+        '<div class="result-header">' +
+          '<div class="card-title" style="margin:0;border:none;padding:0;">Répartition optimale — NOMAD</div>' +
+          '<span class="power-badge">' + data.puissance.toFixed(2) + ' MW</span>' +
+        '</div>' +
+        '<div class="turbine-list">' + rows + '</div>' +
+      '</div>';
+
+    section.classList.add('visible');
+    requestAnimationFrame(() => {
+      section.querySelectorAll('.bar-fill').forEach(b => { b.style.width = (b.dataset.pct||0)+'%'; });
+    });
+
+  } catch(e) {
+    spinner.classList.remove('visible');
+    btn.disabled = false;
+    section.innerHTML = '<div class="card"><div class="error-box">Erreur réseau : ' + e.message + '</div></div>';
+    section.classList.add('visible');
+  }
+}
+</script>
+{% endblock %}
