@@ -45,14 +45,8 @@ def optimiser():
         debit_total = int(round(round(debit_total / palier) * palier))
 
         debit_max_centrale = int(round(round(nb_turbines * debit_max / palier) * palier))
-        if debit_total > debit_max_centrale:
-            return flask.jsonify({
-                'error': (
-                    f"Optimisation impossible : débit demandé ({debit_total} m³/s) "
-                    f"supérieur à la capacité des {nb_turbines} turbine(s) disponible(s) "
-                    f"({nb_turbines} × {debit_max:.0f} = {int(nb_turbines * debit_max)} m³/s max)."
-                )
-            }), 400
+        debit_deverse = max(0, debit_total - debit_max_centrale)
+        debit_total = min(debit_total, debit_max_centrale)
 
         centrale = Centrale(
             nb_turbines=nb_turbines,
@@ -74,6 +68,7 @@ def optimiser():
             'solution_indexed': solution_indexed,
             'puissance':        puissance,
             'max_debit':        max_debit,
+            'debit_deverse':    debit_deverse
         })
 
     except Exception as e:
@@ -166,13 +161,19 @@ def nomad_optimiser():
         debit_total          = int(round(float(data.get('debit_total', 565)) / 5) * 5)
         niveau_amont         = float(data.get('niveau_amont', 137.76))
         debit_max            = int(data.get('debit_max', 160))
+        max_eval             = int(data.get('max_eval', 80))
 
         if nb_turbines == 0:
             return flask.jsonify({'error': 'Veuillez sélectionner au moins une turbine.'}), 400
-        if debit_total > nb_turbines * debit_max:
-            return flask.jsonify({'error': f"Débit total ({debit_total}) supérieur à la capacité ({nb_turbines} × {debit_max} = {nb_turbines*debit_max} m³/s)."}), 400
+        # if debit_total > nb_turbines * debit_max:
+        #     return flask.jsonify({'error': f"Débit total ({debit_total}) supérieur à la capacité ({nb_turbines} × {debit_max} = {nb_turbines*debit_max} m³/s)."}), 400
 
         dim = nb_turbines - 1  # Q1..Q(n-1), Qn = total - sum
+
+        # Déversement du débit en trop
+        debit_max_centrale = nb_turbines * debit_max
+        debit_deverse = max(0, debit_total - debit_max_centrale)
+        debit_total = min(debit_total, debit_max_centrale)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             import shutil, sys as _sys
@@ -208,7 +209,7 @@ def nomad_optimiser():
 
             GRANULARITY    ( {gran_str} )
 
-            MAX_BB_EVAL   80
+            MAX_BB_EVAL   {max_eval}
 
             SOLUTION_FILE  sol.txt
 """
@@ -251,11 +252,12 @@ def nomad_optimiser():
                 palier_discretisation=5,
                 turbines_disponibles=turbines_disponibles
             )
+
             puissance = -c.boite_noire(debit_total, niveau_amont, x_full)
 
             solution = {turbines_disponibles[i]: x_full[i] for i in range(nb_turbines)}
 
-            return flask.jsonify({'solution': solution, 'puissance': puissance})
+            return flask.jsonify({'solution': solution, 'puissance': puissance, 'debit_deverse': debit_deverse})
 
     except subprocess.TimeoutExpired:
         return flask.jsonify({'error': 'NOMAD a dépassé le temps limite (120s).'}), 500

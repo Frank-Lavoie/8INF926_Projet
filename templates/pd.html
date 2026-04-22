@@ -154,6 +154,10 @@ async function optimiser() {
           <div class="card-title" style="margin:0;border:none;padding:0;">Répartition optimale</div>
           <span class="power-badge">${data.puissance.toFixed(2)} MW</span>
         </div>
+        <div class="result-header">
+          <div class="card-title" style="margin:0;border:none;padding:0;">Débit déversé</div>
+          <span class="power-badge">${data.debit_deverse.toFixed(2)} m³/s</span>
+        </div>
         <div class="turbine-list">${rows}</div>
       </div>`;
 

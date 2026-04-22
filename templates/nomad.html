@@ -29,6 +29,10 @@
     <label>Niveau amont (m)</label>
     <input type="number" id="niveau_amont" value="137.76" min="100" max="200" step="0.01">
   </div>
+  <div class="field">
+    <label>Nombre d'itérations maximale</label>
+    <input type="number" id="max_eval" value="80" min="10" max="200" step="5">
+  </div>
   <button class="btn-main" id="btn" onclick="lancer()">Lancer NOMAD</button>
 </div>
 
@@ -86,6 +90,7 @@ async function lancer() {
     debit_total:  parseFloat(document.getElementById('debit_total').value),
     niveau_amont: parseFloat(document.getElementById('niveau_amont').value),
     debit_max:    parseInt(document.getElementById('debit_max').value),
+    max_eval:     parseInt(document.getElementById('max_eval').value),
   };
 
   try {
@@ -118,6 +123,10 @@ async function lancer() {
         '<div class="result-header">' +
           '<div class="card-title" style="margin:0;border:none;padding:0;">Répartition optimale — NOMAD</div>' +
           '<span class="power-badge">' + data.puissance.toFixed(2) + ' MW</span>' +
+        '</div>' +
+        '<div class="result-header">' +
+          '<div class="card-title" style="margin:0;border:none;padding:0;">Débit déversé</div>' +
+          '<span class="power-badge">' + data.debit_deverse.toFixed(2) + ' m³/s</span>' +
         '</div>' +
         '<div class="turbine-list">' + rows + '</div>' +
       '</div>';
