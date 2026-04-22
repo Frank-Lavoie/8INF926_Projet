@@ -9,7 +9,7 @@ import pandas as pd
 import requests
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import render_template
+from flask import render_template, request
 
 app = flask.Flask(__name__)
 
@@ -21,6 +21,10 @@ NOMAD_EXE = r"C:\Program Files (x86)\nomad.3.9.1\bin\nomad.exe"
 @app.route('/')
 def home():
     return render_template('pd.html', title="Optimisation par programmation dynamique")
+
+@app.route('/params')
+def params():
+    return render_template('params.html', title="Paramètres", referer=request.args.get('referer', '/'))
 
 @app.route('/nomad-page')
 def nomad_page():
@@ -45,14 +49,8 @@ def optimiser():
         debit_total = int(round(round(debit_total / palier) * palier))
 
         debit_max_centrale = int(round(round(nb_turbines * debit_max / palier) * palier))
-        if debit_total > debit_max_centrale:
-            return flask.jsonify({
-                'error': (
-                    f"Optimisation impossible : débit demandé ({debit_total} m³/s) "
-                    f"supérieur à la capacité des {nb_turbines} turbine(s) disponible(s) "
-                    f"({nb_turbines} × {debit_max:.0f} = {int(nb_turbines * debit_max)} m³/s max)."
-                )
-            }), 400
+        debit_deverse = max(0, debit_total - debit_max_centrale)
+        debit_total = min(debit_total, debit_max_centrale)
 
         centrale = Centrale(
             nb_turbines=nb_turbines,
@@ -74,14 +72,15 @@ def optimiser():
             'solution_indexed': solution_indexed,
             'puissance':        puissance,
             'max_debit':        max_debit,
+            'debit_deverse':    debit_deverse
         })
 
     except Exception as e:
         return flask.jsonify({'error': str(e)}), 500
 
-@app.route('/pd-stats', methods=['GET'])
+@app.route('/stats-pd', methods=['GET'])
 def verifier_pd():
-    nrows = 100
+    nrows = request.args.get('nRows', default=100, type=int)
     df = pd.read_excel("data.xlsx", nrows=nrows)
 
     total_diff_puissance = 0
@@ -165,13 +164,19 @@ def nomad_optimiser():
         debit_total          = int(round(float(data.get('debit_total', 565)) / 5) * 5)
         niveau_amont         = float(data.get('niveau_amont', 137.76))
         debit_max            = int(data.get('debit_max', 160))
+        max_eval             = int(data.get('max_eval', 80))
 
         if nb_turbines == 0:
             return flask.jsonify({'error': 'Veuillez sélectionner au moins une turbine.'}), 400
-        if debit_total > nb_turbines * debit_max:
-            return flask.jsonify({'error': f"Débit total ({debit_total}) supérieur à la capacité ({nb_turbines} × {debit_max} = {nb_turbines*debit_max} m³/s)."}), 400
+        # if debit_total > nb_turbines * debit_max:
+        #     return flask.jsonify({'error': f"Débit total ({debit_total}) supérieur à la capacité ({nb_turbines} × {debit_max} = {nb_turbines*debit_max} m³/s)."}), 400
 
         dim = nb_turbines - 1  # Q1..Q(n-1), Qn = total - sum
+
+        # Déversement du débit en trop
+        debit_max_centrale = nb_turbines * debit_max
+        debit_deverse = max(0, debit_total - debit_max_centrale)
+        debit_total = min(debit_total, debit_max_centrale)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             import shutil, sys as _sys
@@ -194,22 +199,22 @@ def nomad_optimiser():
 
             param_content = f"""DIMENSION      {dim}
 
-BB_EXE         bb.bat
+            BB_EXE         bb.bat
 
-BB_OUTPUT_TYPE OBJ PB PB
+            BB_OUTPUT_TYPE OBJ PB PB
 
-X0             ( {x0_str} )
+            X0             ( {x0_str} )
 
-LOWER_BOUND    ( {lb_str} )
-UPPER_BOUND    ( {ub_str} )
+            LOWER_BOUND    ( {lb_str} )
+            UPPER_BOUND    ( {ub_str} )
 
-BB_INPUT_TYPE  ( {type_str} )
+            BB_INPUT_TYPE  ( {type_str} )
 
-GRANULARITY    ( {gran_str} )
+            GRANULARITY    ( {gran_str} )
 
-MAX_BB_EVAL   80
+            MAX_BB_EVAL   {max_eval}
 
-SOLUTION_FILE  sol.txt
+            SOLUTION_FILE  sol.txt
 """
             param_path = os.path.join(tmpdir, 'param.txt')
             with open(param_path, 'w') as pf:
@@ -250,11 +255,12 @@ SOLUTION_FILE  sol.txt
                 palier_discretisation=5,
                 turbines_disponibles=turbines_disponibles
             )
+
             puissance = -c.boite_noire(debit_total, niveau_amont, x_full)
 
             solution = {turbines_disponibles[i]: x_full[i] for i in range(nb_turbines)}
 
-            return flask.jsonify({'solution': solution, 'puissance': puissance})
+            return flask.jsonify({'solution': solution, 'puissance': puissance, 'debit_deverse': debit_deverse})
 
     except subprocess.TimeoutExpired:
         return flask.jsonify({'error': 'NOMAD a dépassé le temps limite (120s).'}), 500
@@ -267,8 +273,9 @@ SOLUTION_FILE  sol.txt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 @app.route('/stats-nomad')
-def stats_nomad():
-    nrows = 100
+def stats_nomad():  
+    nrows = request.args.get('nRows', default=100, type=int)
+    rows = []
     df = pd.read_excel("data.xlsx", nrows=nrows)
 
     cols_turbines = ['Q1 (m3/s)', 'Q2 (m3/s)', 'Q3 (m3/s)', 'Q4 (m3/s)', 'Q5 (m3/s)']
@@ -334,48 +341,23 @@ def stats_nomad():
             label = f"{q_val} m³/s" + (" (inactif)" if is_inactive_reel else "")
             turbines_detail += f'<td style="{cell_style}">T{t}: {label}</td>'
 
-        rows_html += f"""
-        <tr>
-            <td>{i}</td>
-            <td>{puissance_reel:.2f}</td>
-            <td>{puissance_estimee:.2f}</td>
-            <td style="{puissance_style}">{diff_puissance:.2f}</td>
-            <td>{nb_turbines_reel}</td>
-            <td>{nb_turbines_estimee}</td>
-            <td style="{turbine_style}">{diff_turbines}</td>
-            {turbines_detail}
-        </tr>
-        """
+        rows.append({
+          "i": i,
+          "puissance_reelle": round(puissance_reel, 2),
+          "puissance_estimee": round(puissance_estimee, 2),
+          "diff_puissance": round(diff_puissance, 2),
+          "puissance_style": puissance_style,
+          "nb_turbines_reel": nb_turbines_reel,
+          "nb_turbines_estimee": nb_turbines_estimee,
+          "diff_turbines": diff_turbines,
+          "turbine_style": turbine_style,
+          "turbines_detail" : turbines_detail
 
-    moyenne_diff = total_diff_puissance / nrows
-    html = f"""
-    <h2>Sommaire — NOMAD</h2>
-    <ul>
-        <li>Moyenne des différences de puissance : <b>{moyenne_diff:.2f}</b> MW</li>
-        <li>Nombre de différences de turbines : <b>{nb_diff_turbines}</b> / {nrows}</li>
-        <li>Temps moyen par optimisation : <b>{temps_total / nrows:.2f}</b> s</li>
-    </ul>
-    <p><a href="/nomad-page">← Retour NOMAD</a></p>
-    <h2>Détails</h2>
-    <table border="1" cellpadding="5" cellspacing="0">
-        <tr>
-            <th>Ligne</th>
-            <th>Puissance réelle</th>
-            <th>Puissance estimée</th>
-            <th>Différence puissance</th>
-            <th>Turbines réelles</th>
-            <th>Turbines estimées</th>
-            <th>Différence turbines</th>
-            <th>T1</th>
-            <th>T2</th>
-            <th>T3</th>
-            <th>T4</th>
-            <th>T5</th>
-        </tr>
-        {rows_html}
-    </table>
-    """
-    return html
+        })
+
+    moyenne_diff_puissance = total_diff_puissance / nrows
+    return render_template('nomad_stats.html',rows=rows, moyenne_diff_puissance=moyenne_diff_puissance, temps_total=temps_total, nb_diff_turbines=nb_diff_turbines, nrows=nrows)
+
 
 
 if __name__ == '__main__':

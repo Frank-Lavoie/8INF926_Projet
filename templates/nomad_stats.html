@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+    
+    <h2>Sommaire — NOMAD</h2>
+    <ul>
+        <li>Moyenne des différences de puissance : <b>{{moyenne_diff_puissance}}</b> MW</li>
+        <li>Nombre de différences de turbines : <b>{{nb_diff_turbines}}</b> / <b>{{nrows}}</b></li>
+        <li>Temps moyen par optimisation : <b>{{temps_total / nrows}}</b> s</li>
+    </ul>
+    <h2>Détails</h2>
+    <table border="1" cellpadding="5" cellspacing="0">
+        <tr>
+            <th>Ligne</th>
+            <th>Puissance réelle</th>
+            <th>Puissance estimée</th>
+            <th>Différence puissance</th>
+            <th>Turbines réelles</th>
+            <th>Turbines estimées</th>
+            <th>Différence turbines</th>
+            <th>T1</th>
+            <th>T2</th>
+            <th>T3</th>
+            <th>T4</th>
+            <th>T5</th>
+        </tr>
+        {% for row in rows %}
+        <tr>
+            <td>{{row.i}}</td>
+            <td>{{row.puissance_reel}}</td>
+            <td>{{row.puissance_estimee}}</td>
+            <td style="{{row.puissance_style}}">{{row.diff_puissance}}</td>
+            <td>{{row.nb_turbines_reel}}</td>
+            <td>{{row.nb_turbines_estimee}}</td>
+            <td style="{{row.turbine_style}}">{{row.diff_turbines}}</td>
+            {{row.turbines_detail | safe}}
+        </tr>
+        {% endfor %}
+    </table>
+
+{% endblock %}
